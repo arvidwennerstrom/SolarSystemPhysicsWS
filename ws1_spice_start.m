@@ -8,7 +8,8 @@
 
 % Your directory where SPICE toolkit and kernels are located
 % ! Change to the correct directory on your computer ! 
-dir_spice = '/Users/arvwe/OneDrive/Dokument/MATLAB/MATLAB_SolarSystem/';
+% dir_spice = '/Users/arvwe/OneDrive/Dokument/MATLAB/MATLAB_SolarSystem/';
+dir_spice = 'C:/Users/tomgi/Documents/DD KTH/AA Cours/Solar System/WS1';
 
 % Add paths to routines of toolkit so that MATLAB finds routines
 % ! more paths need to be linked than mentioend in description !
