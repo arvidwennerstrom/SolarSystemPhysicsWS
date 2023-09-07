@@ -8,7 +8,7 @@
 
 % Your directory where SPICE toolkit and kernels are located
 % ! Change to the correct directory on your computer ! 
-dir_spice = '/Users/arvwe/OneDrive/Dokument/MATLAB/MATLAB_SolarSystem/';
+dir_spice = '/Users/arvwe/Documents/SolarSystemPhysicsWS1';
 % dir_spice = 'C:/Users/tomgi/Documents/DD KTH/AA Cours/Solar System/WS1';
 % dir_spice = '\Users\dansf\OneDrive\Documents\KTH\Solar System Physics';
 % dir_spice = '/Users/irene/Documents/KTH/year 2/Solar System Physics/';
