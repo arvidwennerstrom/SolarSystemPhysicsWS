@@ -41,6 +41,7 @@ cspice_str2et('2000-01-01T11:58:56')
 % Calculate the positions of planet Jupiter ('599') for these times 
 % - uses Ecliptic Coordinate System, with third coord pointing to Ecliptic North
 [jup_spos, ltime] = cspice_spkpos('599', et_arr, 'ECLIPJ2000', 'LT', 'SUN');
+[mars_spos, ltime2] = cspice_spkpos('499', et_arr, 'ECLIPJ2000', 'LT', 'SUN');
 
 % Convert coordinates from [km] to [AU]
 AU_km = 1.495979e+8;    % 1 AU in [km]
@@ -60,5 +61,7 @@ hold on;
 plot(jup_spos(1,i_perih),jup_spos(2,i_perih),'-ko','MarkerSize',10,'Color','b'); % Plot Jup position at perhelion
 plot(0,0,'-ko','MarkerSize',10,'Color','y',LineWidth=5); % Plot sun in center
 hold off;
+xlabel('AU')
+ylabel('AU')
 
 %--------------------------------------------------------------------------
