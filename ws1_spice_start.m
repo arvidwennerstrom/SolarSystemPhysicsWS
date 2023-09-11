@@ -56,6 +56,7 @@ cspice_str2et('2000-01-01T11:58:56');
 [nep_spos, nep_ltime] = cspice_spkpos('899', et_arr, 'ECLIPJ2000', 'LT', 'SUN');
 [plu_spos, plu_ltime] = cspice_spkpos('999', et_arr, 'ECLIPJ2000', 'LT', 'SUN');
 [voyager_spos, ltime_end] = cspice_spkpos('-32', et_arr, 'ECLIPJ2000', 'LT', 'SUN');
+[triton_spos, triton_ltime] = cspice_spkpos('801', et_arr, 'ECLIPJ2000', 'LT', 'SUN');
 
 
 % Convert coordinates from [km] to [AU]
@@ -67,6 +68,7 @@ ura_spos = ura_spos/AU_km;
 nep_spos = nep_spos/AU_km;
 plu_spos = plu_spos/AU_km;
 voyager_spos=voyager_spos/AU_km;
+triton_spos = triton_spos/AU_km;
 
 % Find perihelion of Jupiter in that period (minimum distance to Sun)
 % ! [distance in km , array index of minimum distance ]
@@ -85,6 +87,7 @@ plot(ura_spos(1,:),ura_spos(2,:),'b');
 plot(nep_spos(1,:),nep_spos(2,:),'b');
 plot(plu_spos(1,:),plu_spos(2,:),'b');
 plot(voyager_spos(1,:),voyager_spos(2,:),'r');
+plot(triton_spos(1,:),triton_spos(2,:),'g');
 %plotFullPlanetOrbits(AU_km);
 
 % plot(jup_spos(1,i_perih),jup_spos(2,i_perih),'-ko','MarkerSize',10,'Color','b'); % Plot Jup position at perhelion
