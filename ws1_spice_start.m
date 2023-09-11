@@ -32,6 +32,7 @@ cspice_furnsh( fullfile(dir_spice, 'kernels/SPK/ura111.bsp') )   % Ephemeris - U
 cspice_furnsh( fullfile(dir_spice, 'kernels/SPK/nep095.bsp') )   % Ephemeris - Neptune + moons system
 cspice_furnsh( fullfile(dir_spice, 'kernels/SPK/plu058.bsp') )   % Ephemeris - Pluto
 cspice_furnsh( fullfile(dir_spice, 'kernels/PCK/pck00010.tpc') ) % Orientation, size, shape - planets
+cspice_furnsh( fullfile(dir_spice, 'kernels/SPK/Voyager_2.m05016u.merged.bsp') )   % Voyager full trajectory
 
 % Extra kernels:
 % -> Example: Kernel for position of the Hubble Space Telescope (HST)
@@ -40,8 +41,8 @@ cspice_furnsh( fullfile(dir_spice, 'kernels/PCK/pck00010.tpc') ) % Orientation, 
 
 % Define a start and end date for a time interval you want to use 
 % and convert the date to ephemeris time (Unit: seconds)
-et_mission  = cspice_str2et(['2016-09-01T12:00';'2028-09-01T12:00']); % From start of the observation.
-et_step  = 3600 ; % time step of 1 hour in ephemeris (in seconds)
+et_mission  = cspice_str2et(['1977-08-20T15:45';'2023-09-30T12:00']); % From start of the observation.
+et_step  = 4*3600 ; % time step of 1 hour in ephemeris (in seconds)
 et_arr   = et_mission(1):et_step:et_mission(2); % Create a time array from start to end
 
 cspice_str2et('2000-01-01T11:58:56');
@@ -54,6 +55,7 @@ cspice_str2et('2000-01-01T11:58:56');
 [ura_spos, ura_ltime] = cspice_spkpos('799', et_arr, 'ECLIPJ2000', 'LT', 'SUN');
 [nep_spos, nep_ltime] = cspice_spkpos('899', et_arr, 'ECLIPJ2000', 'LT', 'SUN');
 [plu_spos, plu_ltime] = cspice_spkpos('999', et_arr, 'ECLIPJ2000', 'LT', 'SUN');
+[voyager_spos, ltime_end] = cspice_spkpos('-32', et_arr, 'ECLIPJ2000', 'LT', 'SUN');
 
 
 % Convert coordinates from [km] to [AU]
@@ -64,11 +66,12 @@ sat_spos = sat_spos/AU_km;
 ura_spos = ura_spos/AU_km;
 nep_spos = nep_spos/AU_km;
 plu_spos = plu_spos/AU_km;
+voyager_spos=voyager_spos/AU_km;
 
 % Find perihelion of Jupiter in that period (minimum distance to Sun)
 % ! [distance in km , array index of minimum distance ]
-[jup_perih,i_perih] = min(cspice_vnorm(jup_spos)); 
-date_perih = cspice_et2utc(et_arr(i_perih),'C',0); % Convert ET of perihelion to date string
+%[jup_perih,i_perih] = min(cspice_vnorm(jup_spos)); 
+%date_perih = cspice_et2utc(et_arr(i_perih),'C',0); % Convert ET of perihelion to date string
 % disp(['Jupiter´s perihelion distance is ',num2str(jup_perih), ' AU, on ',date_perih(1:11)]);
 
 % Plot the orbits of Solar system
@@ -81,7 +84,8 @@ plot(sat_spos(1,:),sat_spos(2,:),'b');
 plot(ura_spos(1,:),ura_spos(2,:),'b');
 plot(nep_spos(1,:),nep_spos(2,:),'b');
 plot(plu_spos(1,:),plu_spos(2,:),'b');
-plotFullPlanetOrbits(AU_km);
+plot(voyager_spos(1,:),voyager_spos(2,:),'r');
+%plotFullPlanetOrbits(AU_km);
 
 % plot(jup_spos(1,i_perih),jup_spos(2,i_perih),'-ko','MarkerSize',10,'Color','b'); % Plot Jup position at perhelion
 hold off;
