@@ -72,7 +72,6 @@ date_perih = cspice_et2utc(et_arr(i_perih),'C',0); % Convert ET of perihelion to
 % disp(['Jupiter´s perihelion distance is ',num2str(jup_perih), ' AU, on ',date_perih(1:11)]);
 
 % Plot the orbits of Solar system
-outerLimit = 35;
 figure(1); 
 plot(0,0,'-ko','MarkerSize',10,'Color','y',LineWidth=5); % Plot sun in center
 hold on;
@@ -86,7 +85,7 @@ plotFullPlanetOrbits(AU_km);
 
 % plot(jup_spos(1,i_perih),jup_spos(2,i_perih),'-ko','MarkerSize',10,'Color','b'); % Plot Jup position at perhelion
 hold off;
-axis([-outerLimit outerLimit -outerLimit outerLimit]);  % Set axes ranges
+axis([-45 45 -45 45]);  % Set axes ranges
 xlabel('AU')
 ylabel('AU')
 
