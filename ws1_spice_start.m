@@ -89,7 +89,7 @@ plot(voyager_spos(1,:),voyager_spos(2,:),'r');
 
 % plot(jup_spos(1,i_perih),jup_spos(2,i_perih),'-ko','MarkerSize',10,'Color','b'); % Plot Jup position at perhelion
 hold off;
-axis([-45 45 -45 45]);  % Set axes ranges
+axis([-20 40 -120 20]);  % Set axes ranges
 xlabel('AU')
 ylabel('AU')
 
