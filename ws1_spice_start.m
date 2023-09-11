@@ -82,7 +82,7 @@ plot(sat_spos(1,:),sat_spos(2,:),'b');
 plot(ura_spos(1,:),ura_spos(2,:),'b');
 plot(nep_spos(1,:),nep_spos(2,:),'b');
 plot(plu_spos(1,:),plu_spos(2,:),'b');
-plotOrbits(AU_km);
+plotFullPlanetOrbits(AU_km);
 
 % plot(jup_spos(1,i_perih),jup_spos(2,i_perih),'-ko','MarkerSize',10,'Color','b'); % Plot Jup position at perhelion
 hold off;
@@ -91,7 +91,7 @@ xlabel('AU')
 ylabel('AU')
 
 %--------------------------------------------------------------------------
-function [] = plotOrbits(AU_km)
+function [] = plotFullPlanetOrbits(AU_km)
     
     planets = ['499'; '599'; '699'; '799'; '899'; '999'];
     orbitalPeriods = [687, 12*365, 30*365, 84*365, 165*365, 248*365]*86400; %[seconds]
@@ -107,7 +107,7 @@ function [] = plotOrbits(AU_km)
         et_time = linspace(start_time,orbitalPeriods(planetNumber)+start_time,100);
         orbit = cspice_spkpos(planets(planetNumber), et_time, 'ECLIPJ2000', 'LT', 'SUN');
         orbit = orbit/AU_km;
-        plot(orbit(1,:),orbit(2,:),'g')
+        plot(orbit(1,:),orbit(2,:),'b')
     end
 end
 
