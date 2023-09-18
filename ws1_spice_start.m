@@ -80,21 +80,23 @@ triton_spos = triton_spos/AU_km;
 figure(1); 
 plot(0,0,'-ko','MarkerSize',10,'Color','y',LineWidth=5); % Plot sun in center
 hold on;
+plot(voyager_spos(1,:),voyager_spos(2,:),'r');
+plot(triton_spos(1,:),triton_spos(2,:),'g');
 plot(mar_spos(1,:),mar_spos(2,:),'b');
 plot(jup_spos(1,:),jup_spos(2,:),'b');
 plot(sat_spos(1,:),sat_spos(2,:),'b');
 plot(ura_spos(1,:),ura_spos(2,:),'b');
 plot(nep_spos(1,:),nep_spos(2,:),'b');
 plot(plu_spos(1,:),plu_spos(2,:),'b');
-plot(voyager_spos(1,:),voyager_spos(2,:),'r');
-plot(triton_spos(1,:),triton_spos(2,:),'g');
 %plotFullPlanetOrbits(AU_km);
-
 % plot(jup_spos(1,i_perih),jup_spos(2,i_perih),'-ko','MarkerSize',10,'Color','b'); % Plot Jup position at perhelion
 hold off;
+
 axis([-20 40 -120 20]);  % Set axes ranges
 xlabel('AU')
 ylabel('AU')
+legend(["Sun" "Voyager" "Triton" "Planetary orbits"],'location','southwest')
+
 
 %--------------------------------------------------------------------------
 function [] = plotFullPlanetOrbits(AU_km)
@@ -116,6 +118,3 @@ function [] = plotFullPlanetOrbits(AU_km)
         plot(orbit(1,:),orbit(2,:),'b')
     end
 end
-
-
-
