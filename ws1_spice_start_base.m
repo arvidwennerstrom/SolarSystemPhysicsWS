@@ -138,6 +138,8 @@ title('Longitude');
 xlabel('Temps');
 ylabel('Longitude (degrés)');
 
+TritonMap(spglon,spglat);
+
 % Question 9
 
 % Définir la date de début et de fin
@@ -368,6 +370,19 @@ function [] = Question4
     %end
 end
 
+function [] = TritonMap(lon,lat)
+    figure()    
+    i = lon*pi/180;
+    j = lat*pi/180;
+    r = ones(length(lon),1);
+            
+    [x1,y1,z1] = sph2cart(i,j,r);
+    [xs,ys,zs] = sphere(30);
+    plot3(x1,y1,z1,'.r')
+    surface(xs,ys,zs,'facecolor','none','edgecolor',ones(1,3)*0.3)
+    view(45,45)
+    axis equal
+end
 
 function [] = plotFullPlanetOrbits(AU_km)
     % Function to plot full planet orbits fo all planets outwards 
