@@ -1,4 +1,3 @@
-
 %% ------------------------------------------------------------------------
 %
 % Lorenz Roth / 1 Sep 2022 
@@ -8,8 +7,8 @@
 
 % Your directory where SPICE toolkit and kernels are located
 % ! Change to the correct directory on your computer ! 
-% dir_spice = '/Users/arvwe/Documents/SolarSystemPhysicsWS1';
-dir_spice = 'C:/Users/tomgi/Documents/DD KTH/AA Cours/Solar System/WS1';
+dir_spice = '/Users/arvwe/Documents/SolarSystemPhysicsWS1';
+% dir_spice = 'C:/Users/tomgi/Documents/DD KTH/AA Cours/Solar System/WS1';
 % dir_spice = '\Users\dansf\OneDrive\Documents\KTH\Solar System Physics';
 % dir_spice = '/Users/irene/Documents/KTH/year 2/Solar System Physics/';
 
@@ -80,16 +79,26 @@ ylabel('AU')
 legend(["Sun" "Voyager" "Triton" "Planetary orbits"],'location','southwest')
 
 %% Question 3
+planetaryNames = ["Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"];
+planetaryIDs = ['499'; '599'; '699'; '799'; '899'; '999'];
+all_planet_spos = [mar_spos; jup_spos; sat_spos; ura_spos; nep_spos; plu_spos];
 
+disp(" "); disp("Question 3")
+disp("Voyager 2 made its closest approach to the following planets: ")
+for planet_no = 1:length(planetaryIDs)
+    planet_spos = all_planet_spos(3*planet_no-2:3*planet_no,:);
+    [distanceFlyby,dateFlyby] = ClosestApproach(voyager_spos,planet_spos,planetaryIDs(planet_no),et_arr);
+    disp([planetaryNames(planet_no)] + ": At a distance of " + num2str(round(distanceFlyby)) + " km, on " + dateFlyby)
+end
 
 %% Question 4
-disp("Question 4")
+disp(" "); disp("Question 4")
 Question4
 
 %% Question 5
-[distanceTritonFlyby,dateTritonFlyby] = TritonFlyby(voyager_spos,triton_spos,et_arr);
+[distanceTritonFlyby,dateTritonFlyby] = ClosestApproach(voyager_spos,triton_spos,'801',et_arr);
 disp("Question 5")
-disp(['Vooyager 2 approached to ', num2str(floor(distanceTritonFlyby)),' km from Triton on the following date :', dateTritonFlyby, 'by date of receipt of data on Earth' ])
+disp(['Voyager 2 approached to ', num2str(floor(distanceTritonFlyby)),' km from Triton on the following date :', dateTritonFlyby, 'by date of receipt of data on Earth' ])
 disp(['Triton time is just 4 hours before beacause of the distance.'])
 
 %% Question 6
@@ -128,6 +137,8 @@ plot(spglon, 'g-', 'LineWidth', 2);
 title('Longitude');
 xlabel('Temps');
 ylabel('Longitude (degrés)');
+
+TritonMap(spglon,spglat);
 
 % Question 9
 
@@ -190,25 +201,25 @@ azimuth = zeros(1, nPoints);
 %grid on;
 
 %% ------------------------- FUNCTIONS ------------------------------------
-function [distance_flyby_precise,date_flyby] = TritonFlyby(voyager,triton,et_arr)
+function [distance_flyby_precise,date_flyby] = ClosestApproach(voyager,planet,planetID,et_arr)
 % Calculate distance and time of closest approach to Triton for Voyager
 
 % OUTPUT:
 % distance_flyby_precise = [km] Closest distance between Voyager and Triton
 % date_flyby = Date of closest approach
 
-    distance = sqrt(sum((voyager-triton).^2)); % [AU]
+    distance = sqrt(sum((voyager-planet).^2)); % [AU]
     [distance_flyby,index_flyby] = min(distance);
 
     % Re-do calculations with better precision
     time_step_precise = 60; % time step size [s]
     et_arr_precise = et_arr(index_flyby-1):time_step_precise:et_arr(index_flyby+1);
     
-    % Precise positions for Voyager and Triton
+    % Precise positions for Voyager and Planet
     voyager_precise = cspice_spkpos('-32', et_arr_precise, 'ECLIPJ2000', 'LT', 'SUN');
-    triton_precise = cspice_spkpos('801', et_arr_precise, 'ECLIPJ2000', 'LT', 'SUN');
+    planet_precise = cspice_spkpos(planetID, et_arr_precise, 'ECLIPJ2000', 'LT', 'SUN');
    
-    distance_precise = sqrt(sum((voyager_precise-triton_precise).^2));
+    distance_precise = sqrt(sum((voyager_precise-planet_precise).^2));
     [distance_flyby_precise,index_flyby_precise] = min(distance_precise);
     time_flyby_precise_et = et_arr_precise(index_flyby_precise);
     
@@ -359,6 +370,19 @@ function [] = Question4
     %end
 end
 
+function [] = TritonMap(lon,lat)
+    figure()    
+    i = lon*pi/180;
+    j = lat*pi/180;
+    r = ones(length(lon),1);
+            
+    [x1,y1,z1] = sph2cart(i,j,r);
+    [xs,ys,zs] = sphere(30);
+    plot3(x1,y1,z1,'.r')
+    surface(xs,ys,zs,'facecolor','none','edgecolor',ones(1,3)*0.3)
+    view(45,45)
+    axis equal
+end
 
 function [] = plotFullPlanetOrbits(AU_km)
     % Function to plot full planet orbits fo all planets outwards 
