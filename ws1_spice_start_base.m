@@ -1,5 +1,5 @@
+close all
 %% ------------------------------------------------------------------------
-%
 % Lorenz Roth / 1 Sep 2022 
 % Example program for WS1 on SPICE / mice for EF2243 HT2022
 %
@@ -34,6 +34,11 @@ et_arr   = et_mission(1):et_step:et_mission(2); % Create a time array from start
 
 cspice_str2et('2000-01-01T11:58:56');
 
+%% General Calculations
+
+planetaryNames = ["Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"];
+planetaryIDs = ['499'; '599'; '699'; '799'; '899'; '999'];
+
 % Calculate the positions of planets
 % - uses Ecliptic Coordinate System, with third coord pointing to Ecliptic North
 [mar_spos, mar_ltime] = cspice_spkpos('499', et_arr, 'ECLIPJ2000', 'LT', 'SUN');
@@ -44,7 +49,6 @@ cspice_str2et('2000-01-01T11:58:56');
 [plu_spos, plu_ltime] = cspice_spkpos('999', et_arr, 'ECLIPJ2000', 'LT', 'SUN');
 [voyager_spos, ltime_end] = cspice_spkpos('-32', et_arr, 'ECLIPJ2000', 'LT', 'SUN');
 [triton_spos, triton_ltime] = cspice_spkpos('801', et_arr, 'ECLIPJ2000', 'LT', 'SUN');
-
 
 % Convert coordinates from [km] to [AU]
 AU_km = 1.495979e+8;    % 1 AU in [km]
@@ -57,8 +61,10 @@ plu_spos = plu_spos/AU_km;
 voyager_spos=voyager_spos/AU_km;
 triton_spos = triton_spos/AU_km;
 
-% Plot the orbits of Solar system
-figure(1); 
+all_planet_spos = [mar_spos; jup_spos; sat_spos; ura_spos; nep_spos; plu_spos];
+
+%% Question 1 & 2
+figure(); 
 plot(0,0,'-ko','MarkerSize',10,'Color','y',LineWidth=5); % Plot sun in center
 hold on;
 plot(voyager_spos(1,:),voyager_spos(2,:),'r');
@@ -69,20 +75,15 @@ plot(sat_spos(1,:),sat_spos(2,:),'b');
 plot(ura_spos(1,:),ura_spos(2,:),'b');
 plot(nep_spos(1,:),nep_spos(2,:),'b');
 plot(plu_spos(1,:),plu_spos(2,:),'b');
-%plotFullPlanetOrbits(AU_km);
-% plot(jup_spos(1,i_perih),jup_spos(2,i_perih),'-ko','MarkerSize',10,'Color','b'); % Plot Jup position at perhelion
 hold off;
-
 axis([-20 40 -120 20]);  % Set axes ranges
 xlabel('AU')
 ylabel('AU')
 legend(["Sun" "Voyager" "Triton" "Planetary orbits"],'location','southwest')
+title('Voyager 2 and planetary positions projected on the ecliptic plane')
+
 
 %% Question 3
-planetaryNames = ["Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"];
-planetaryIDs = ['499'; '599'; '699'; '799'; '899'; '999'];
-all_planet_spos = [mar_spos; jup_spos; sat_spos; ura_spos; nep_spos; plu_spos];
-
 disp(" "); disp("Question 3")
 disp("Voyager 2 made its closest approach to the following planets: ")
 for planet_no = 1:length(planetaryIDs)
@@ -91,9 +92,11 @@ for planet_no = 1:length(planetaryIDs)
     disp([planetaryNames(planet_no)] + ": At a distance of " + num2str(round(distanceFlyby)) + " km, on " + dateFlyby)
 end
 
+
 %% Question 4
-disp(" "); disp("Question 4")
-Question4
+% disp(" "); disp("Question 4")
+% Question4
+
 
 %% Question 5
 [distanceTritonFlyby,dateTritonFlyby] = ClosestApproach(voyager_spos,triton_spos,'801',et_arr);
@@ -101,7 +104,9 @@ disp("Question 5")
 disp(['Voyager 2 approached to ', num2str(floor(distanceTritonFlyby)),' km from Triton on the following date :', dateTritonFlyby, 'by date of receipt of data on Earth' ])
 disp(['Triton time is just 4 hours before beacause of the distance.'])
 
+
 %% Question 6
+disp(" "); disp("Question 6")
 radii  = cspice_bodvrd( '801', 'RADII', 3 );
 re = radii(1);
 rp = radii(3);
@@ -122,10 +127,10 @@ spglon = spglon * cspice_dpr;
 spglat = spglat * cspice_dpr;
 
 
-figure(2);
+figure();
 plot(spglon(:),spglat(:),'r');            
 
-figure(3);
+figure();
 subplot(2, 1, 1);
 plot(spglat, 'r-', 'LineWidth', 2);
 title('Latitude');
@@ -138,10 +143,18 @@ title('Longitude');
 xlabel('Temps');
 ylabel('Longitude (degrés)');
 
-TritonMap(spglon,spglat);
 
-% Question 9
+%% Question 7
+disp(" "); disp("Question 7")
+[subSolarLon,subSolarLat] = Question7(et_view,re,f);
 
+
+%% Questions 8
+distance_view = sqrt(sum((voyager_view-triton_view).^2));
+TritonMap(distance_view',spglon,spglat,subSolarLon,subSolarLat);
+
+
+%% Question 9
 % Définir la date de début et de fin
 dateDebut = cspice_str2et('2023-09-21T00:00:00');
 dateFin = cspice_str2et('2023-09-21T23:59:59');
@@ -176,7 +189,7 @@ azimuth = zeros(1, nPoints);
 %end
 
 % Tracer les graphiques (comme précédemment)
-%figure(4);
+%figure();
 
 % Déclinaison et Ascension Droite
 %subplot(2, 1, 1);
@@ -226,7 +239,6 @@ function [distance_flyby_precise,date_flyby] = ClosestApproach(voyager,planet,pl
     % Convert et-time to date
     date_flyby = cspice_et2utc(time_flyby_precise_et,'C',0);
 end
-
 
 function [] = Question4
 % 'VOYAGER 2': code -32
@@ -370,18 +382,64 @@ function [] = Question4
     %end
 end
 
-function [] = TritonMap(lon,lat)
+function [] = TritonMap(altitude,lon,lat,lon2,lat2)
+    triton_r = 1353.4; % [km]
     figure()    
-    i = lon*pi/180;
-    j = lat*pi/180;
-    r = ones(length(lon),1);
+    r = ones(length(lon),1)*triton_r;
             
-    [x1,y1,z1] = sph2cart(i,j,r);
+    [x1,y1,z1] = sph2cart(deg2rad(lon),deg2rad(lat),r(1));
+    [x2,y2,z2] = sph2cart(deg2rad(lon2),deg2rad(lat2),r(1));
     [xs,ys,zs] = sphere(30);
-    plot3(x1,y1,z1,'.r')
+    xs = xs*triton_r; ys = ys*triton_r; zs = zs*triton_r;
+   
+    plot3(x2,y2,z2,'.r')
+    hold on
+    scatter3(x1,y1,z1,20,altitude,'filled')
+    % textscatter(x1(1),y1(1),z1(1),'t = 0')
     surface(xs,ys,zs,'facecolor','none','edgecolor',ones(1,3)*0.3)
-    view(45,45)
+    
+    view(45,22.5)
+    c = colorbar('eastoutside');
+    c.Label.String = 'Voyager 2 altitude above Triton surface [km]';
     axis equal
+    xlabel('x-coordinate [km]'); ylabel('y-coordinate [km]'); zlabel('z-coordinate [km]')
+    title('Map of Triton')
+    legend('Sub-solar point','Location','north')
+end
+
+function [spglon,spglat] = Question7(et_view,re,f)
+
+
+    [spoint] = cspice_subsol('NEARPOINT','801', et_view, 'LT', '-32');
+    
+    [spglon, spglat, spgalt] = cspice_recpgr( '801', spoint, re,f );
+    spglon = spglon * cspice_dpr;
+    spglat = spglat * cspice_dpr;
+    
+    figure()
+    subplot(2, 1, 1);
+    plot(spglat, 'r-', 'LineWidth', 2);
+    title('Latitude');
+    xlabel('Temps');
+    ylabel('Latitude (degrés)');
+    
+    subplot(2, 1, 2);
+    plot(spglon, 'g-', 'LineWidth', 2);
+    title('Longitude');
+    xlabel('Temps');
+    ylabel('Longitude (degrés)');
+    
+    for i=1:length(spglon)
+        if spglon(i)>250
+            spglon(i) = spglon(i)-360;
+        end
+    end
+    
+    figure();
+    plot(spglon(:),spglat(:),'r'); 
+    title('Trajectory of sub-solar point on Triton during closest approach');
+    xlabel('Longitude (degrees)');
+    ylabel('Latitude (degrees)');
 end
 
 function [] = plotFullPlanetOrbits(AU_km)
@@ -405,6 +463,4 @@ function [] = plotFullPlanetOrbits(AU_km)
         plot(orbit(1,:),orbit(2,:),'b')
     end
 end
-
-
 
