@@ -94,8 +94,8 @@ end
 
 
 %% Question 4
-% disp(" "); disp("Question 4")
-% Question4
+disp(" "); disp("Question 4")
+Question4
 
 
 %% Question 5
