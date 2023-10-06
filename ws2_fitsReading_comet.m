@@ -15,16 +15,29 @@
 %
 clear; clc; close all
 
-%  Example:
-           DATADIR     = './HST_Data_46P/';
-           OBSERVATION = 'odx605010';           % root name of file
+dir_spice = '/Users/arvwe/Documents/SPICE';
+% dir_spice = 'C:/Users/tomgi/Documents/DD KTH/AA Cours/Solar System/WS1';
+% dir_spice = '\Users\dansf\OneDrive\Documents\KTH\Solar System Physics';
+% dir_spice = '/Users/irene/Documents/KTH/year 2/Solar System Physics/';
 
-%% main funtion
-    dir_spice = '/Users/arvwe/Documents/SPICE';
-    % dir_spice = 'C:/Users/tomgi/Documents/DD KTH/AA Cours/Solar System/WS1';
-    % dir_spice = '\Users\dansf\OneDrive\Documents\KTH\Solar System Physics';
-    % dir_spice = '/Users/irene/Documents/KTH/year 2/Solar System Physics/';
+addpath( fullfile(dir_spice, 'mice/') )
+addpath( fullfile(dir_spice, 'mice/lib') )
+addpath( fullfile(dir_spice, 'mice/doc/html') )
+addpath( fullfile(dir_spice, 'mice/src') )
+addpath( fullfile(dir_spice, 'mice/src/mice') )
+kernels = ["LSK/naif0010.tls","SPK/de440s.bsp","SPK/hst.bsp","SPK/1000109.bsp"];
+for kernel_no = 1:length(kernels)
+    cspice_furnsh( fullfile(dir_spice, ['kernels/' char(kernels(kernel_no))]))
+end
 
+DATADIR     = './HST_Data_46P/';
+OBSERVATIONS_ALL = ["odx605010","odx607010","odx628010"]; % root name of files
+OBSERVATION_OFFSETS = [0,2.5,8]./3600; % [deg] Offset towards the Sun
+OBSERVATION_TIMES = ["2019-01-11T09:51","2019-01-11T10:23";"2019-01-11T14:34","2019-01-11T15:06";"2019-01-14T12:32","2019-01-14T13:03"];
+
+for obsNumber = 1:length(OBSERVATIONS_ALL)
+    %% main funtion
+    OBSERVATION = char(OBSERVATIONS_ALL(obsNumber));
 
     FITSFILE    = [ OBSERVATION '_flt'];
     FITSDIR     = [ DATADIR FITSFILE '.fits' ] ;
@@ -72,9 +85,9 @@ clear; clc; close all
     img_plot=FITSDATASET.RAWCOUNTS*1e15; % multiply with 1e15 to be close to 1
     fig_caxis = [0 3];     % Set arbitrary bounds to displayed image
     
-    figure(1);
+    figure();
     
-    imagesc(img_plot, fig_caxis); 
+    imagesc(img_plot,fig_caxis); 
       
     set(gca,'ydir','nor') ;  % Define y axis to increase from bottom to top
     axis equal
@@ -92,7 +105,7 @@ clear; clc; close all
      
     
  %% --- Plot spectrum by summing along slit --- 
-    figure(2);
+    figure();
  
     for jj=1:col
         total_along_the_slit(jj)  = sum(FITSDATASET.RAWCOUNTS(:,jj)) ;
@@ -120,43 +133,58 @@ clear; clc; close all
 
     xlabel('Wavelength (Å)  -   Pixel') ;
 
- %% --
- %-- Helpful factors for unit conversion from [counts] to photon flux
-
-    platesc_rad = deg2rad(platesc / 3600);   % pixel platescale in radians
-    omega_pix = platesc_rad^2;       % solid angle of one pixels in steradians (rad^2)
-
- %% Q1
- % Offset from comet nucleus towards the Sun, in km
- offset_km = offsetDistance(dir_spice);
-
-
- %% -------------------------- Functions -------------------------------
-function [dist_offset] = offsetDistance(dir_spice) 
-    addpath( fullfile(dir_spice, 'mice/') )
-    addpath( fullfile(dir_spice, 'mice/lib') )
-    addpath( fullfile(dir_spice, 'mice/doc/html') )
-    addpath( fullfile(dir_spice, 'mice/src') )
-    addpath( fullfile(dir_spice, 'mice/src/mice') )
+     %% --
+     %-- Helpful factors for unit conversion from [counts] to photon flux
     
-    kernels = ["LSK/naif0010.tls","SPK/de440s.bsp","SPK/hst.bsp","SPK/1000109.bsp"];
-    for kernel_no = 1:length(kernels)
-        cspice_furnsh( fullfile(dir_spice, ['kernels/' char(kernels(kernel_no))]))
-    end
+        platesc_rad = deg2rad(platesc / 3600);   % pixel platescale in radians
+        omega_pix = platesc_rad^2;       % solid angle of one pixels in steradians (rad^2)
     
-    dist_offset = []; % [km]
-    angle_offset = [0,2.5,8]./3600; % [deg] Offset towards the Sun
-    measurements = ["2019-01-11T09:51","2019-01-11T10:23";"2019-01-11T14:34","2019-01-11T15:06";"2019-01-14T12:32","2019-01-14T13:03"];
-    for measure_no = 1:length(measurements)
-        et_interval = cspice_str2et([char(measurements(measure_no,1));char(measurements(measure_no,2))]);
-        et_step  = 1;
-        et_arr = et_interval(1):et_step:et_interval(2);
-        [hub_spos, hub_ltime] = cspice_spkpos('-48', et_arr, 'ECLIPJ2000', 'LT', 'SUN');
-        [wir_spos, wir_ltime] = cspice_spkpos('1000109', et_arr, 'ECLIPJ2000', 'LT', 'SUN');
-        dist = mean(cspice_vdist(hub_spos,wir_spos));
-        dist_offset = [dist_offset dist*tand(angle_offset(measure_no))];
-    end
+     %% Q1
+     % Offset from comet nucleus towards the Sun, in km
+     [dist_HST_comet,dist_offset] = offsetDistance(OBSERVATION_OFFSETS(obsNumber),OBSERVATION_TIMES(obsNumber,:));
+    
+    
+    %% Q3
+    pixelPlateScale = 0.05078/3600; % [deg] 
+    brightnessOverDistance(FITSDATASET,dist_HST_comet*tand(pixelPlateScale));
+    
 end
+
+%% -------------------------- Functions -------------------------------
+function [] = brightnessOverDistance(DATA,scaling)
+    % counts = Raw count data 
+    % scaling = One pixel equivalent in km
+
+    centerPixel = length(DATA.RAWCOUNTS)/2;
+    counts_folded = [DATA.RAWCOUNTS(centerPixel+1:end,:) flip(DATA.RAWCOUNTS(1:centerPixel,:))];
+    error_folded = [DATA.ERROR(centerPixel+1:end,:) flip(DATA.ERROR(1:centerPixel,:))];
+    
+    brightness = sum(counts_folded,2);
+    error = sqrt(sum(error_folded.^2,2));
+
+    figure()
+    plot(scaling*(1:centerPixel),brightness)
+    hold on
+    plot(scaling*(1:centerPixel),error)
+    xlabel('Distance from optocenter [km]')
+    ylabel('Intensity [counts]')
+    legend('Brightness','Error')
+    title('Brightness over distance from optocenter')
+end
+  
+function [dist_HST_comet,dist_offset] = offsetDistance(offsetAngle,timeOfObservation) 
+  
+    et_interval = cspice_str2et([char(timeOfObservation(1));char(timeOfObservation(2))]);
+    et_step  = 1;
+    et_arr = et_interval(1):et_step:et_interval(2);
+
+    [hub_spos, hub_ltime] = cspice_spkpos('-48', et_arr, 'ECLIPJ2000', 'LT', 'SUN');
+    [wir_spos, wir_ltime] = cspice_spkpos('1000109', et_arr, 'ECLIPJ2000', 'LT', 'SUN');
+
+    dist_HST_comet = mean(cspice_vdist(hub_spos,wir_spos));
+    dist_offset = dist_HST_comet*tand(offsetAngle);
+end
+
 
 
 
