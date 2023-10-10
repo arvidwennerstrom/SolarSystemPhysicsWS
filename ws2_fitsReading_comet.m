@@ -145,7 +145,7 @@ for obsNumber = 1:length(OBSERVATIONS_ALL)
      disp("Observation " + num2str(obsNumber) + ": " + num2str(3600*rad2deg(OBSERVATION_OFFSETS(obsNumber))) +  "'' equals " + num2str(round(dist_offset)) + " km offset " )
 
     
-    %% Q3 
+    %% Q4 and Q5
     brightnessOverDistance(FITSDATASET,dist_HST_comet*tan(platesc_rad),dist_offset);
     
 end
