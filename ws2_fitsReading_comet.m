@@ -32,7 +32,7 @@ end
 
 DATADIR     = './HST_Data_46P/';
 OBSERVATIONS_ALL = ["odx605010","odx607010","odx628010"]; % root name of files
-OBSERVATION_OFFSETS = [0,2.5,8]./3600; % [deg] Offset towards the Sun
+OBSERVATION_OFFSETS = deg2rad([0,2.5,8]./3600); % [rad] Offset towards the Sun
 OBSERVATION_TIMES = ["2019-01-11T09:51","2019-01-11T10:23";"2019-01-11T14:34","2019-01-11T15:06";"2019-01-14T12:32","2019-01-14T13:03"];
 
 for obsNumber = 1:length(OBSERVATIONS_ALL)
@@ -142,38 +142,23 @@ for obsNumber = 1:length(OBSERVATIONS_ALL)
      %% Q1
      % Offset from comet nucleus towards the Sun, in km
      [dist_HST_comet,dist_offset] = offsetDistance(OBSERVATION_OFFSETS(obsNumber),OBSERVATION_TIMES(obsNumber,:));
+     disp("Observation " + num2str(obsNumber) + ": " + num2str(3600*rad2deg(OBSERVATION_OFFSETS(obsNumber))) +  "'' equals " + num2str(round(dist_offset)) + " km offset " )
+
     
-    
-    %% Q3
-    pixelPlateScale = 0.05078/3600; % [deg] 
-    brightnessOverDistance(FITSDATASET,dist_HST_comet*tand(pixelPlateScale));
+    %% Q3 
+    brightnessOverDistance(FITSDATASET,dist_HST_comet*tan(platesc_rad),dist_offset);
     
 end
 
 %% -------------------------- Functions -------------------------------
-function [] = brightnessOverDistance(DATA,scaling)
-    % counts = Raw count data 
-    % scaling = One pixel equivalent in km
-
-    centerPixel = length(DATA.RAWCOUNTS)/2;
-    counts_folded = [DATA.RAWCOUNTS(centerPixel+1:end,:) flip(DATA.RAWCOUNTS(1:centerPixel,:))];
-    error_folded = [DATA.ERROR(centerPixel+1:end,:) flip(DATA.ERROR(1:centerPixel,:))];
-    
-    brightness = sum(counts_folded,2);
-    error = sqrt(sum(error_folded.^2,2));
-
-    figure()
-    plot(scaling*(1:centerPixel),brightness)
-    hold on
-    plot(scaling*(1:centerPixel),error)
-    xlabel('Distance from optocenter [km]')
-    ylabel('Intensity [counts]')
-    legend('Brightness','Error')
-    title('Brightness over distance from optocenter')
-end
-  
 function [dist_HST_comet,dist_offset] = offsetDistance(offsetAngle,timeOfObservation) 
-  
+    % INPUT: 
+    % offsetAngle = [rad] Offset from nucleus towards Sun
+    % timeOfObservation = [string] Time and date of observation
+    % OUTPUT:
+    % dist_HST_comet = [km] Distance between Hubble and comet
+    % dist_offset = [km] Distance of current offset in km
+
     et_interval = cspice_str2et([char(timeOfObservation(1));char(timeOfObservation(2))]);
     et_step  = 1;
     et_arr = et_interval(1):et_step:et_interval(2);
@@ -182,8 +167,41 @@ function [dist_HST_comet,dist_offset] = offsetDistance(offsetAngle,timeOfObserva
     [wir_spos, wir_ltime] = cspice_spkpos('1000109', et_arr, 'ECLIPJ2000', 'LT', 'SUN');
 
     dist_HST_comet = mean(cspice_vdist(hub_spos,wir_spos));
-    dist_offset = dist_HST_comet*tand(offsetAngle);
+    dist_offset = dist_HST_comet*tan(offsetAngle);
 end
+
+function [] = brightnessOverDistance(DATA,scaling,offset_km)
+    % counts = Raw count data 
+    % scaling = One pixel equivalent in km
+    % offset = Observation offset from optocenter
+
+    centerPixel = length(DATA.RAWCOUNTS)/2;
+    counts_folded = [DATA.RAWCOUNTS(centerPixel+1:end,:) flip(DATA.RAWCOUNTS(1:centerPixel,:))];
+    error_folded = [DATA.ERROR(centerPixel+1:end,:) flip(DATA.ERROR(1:centerPixel,:))];
+    N = length(error_folded);
+
+    brightness = mean(counts_folded,2);
+    error = (1/N)*sqrt(sum(error_folded.^2,2));
+
+    distance = scaling*(1:centerPixel) + offset_km;
+    
+    figure()
+    plot(distance,brightness)
+    hold on
+    plot(distance,error)
+    xlim([min(distance) max(distance)])
+    xlabel('Distance from optocenter [km]')
+    ylabel('Intensity [counts]')
+    legend('Brightness','Error')
+    title('Brightness over distance from optocenter')
+    
+
+    % a1Pos = get(gca,'Position');
+    % ax2 = axes('Position',[a1Pos(1)-.05 a1Pos(2) a1Pos(3) a1Pos(4)],'Color','none','XTick',[],'XTickLabel',[]);
+    % xlim([min(error(:)) max(error(:))])
+end
+  
+
 
 
 
