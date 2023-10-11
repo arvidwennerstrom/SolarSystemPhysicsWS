@@ -242,7 +242,7 @@ function NGCD = fluxtocolumndensity(flux, lambda, omegapix)
         nu = c/lambda(i);
     end
     L = omegapix*h*nu.*flux;
-    alpha0_0 = 2e-22; % 1 erg = 1e-7 J, to be adjusted regarding to rdot
+    alpha0_0 = 5.45e-22; % 1 erg = 1e-7 J, to be adjusted regarding to rdot
     NGCD = L/alpha0_0;
 end
 
