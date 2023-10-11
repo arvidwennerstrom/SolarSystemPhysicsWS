@@ -142,23 +142,42 @@ for obsNumber = 1:length(OBSERVATIONS_ALL)
      %% Q1
      % Offset from comet nucleus towards the Sun, in km
      [dist_HST_comet,dist_offset] = offsetDistance(OBSERVATION_OFFSETS(obsNumber),OBSERVATION_TIMES(obsNumber,:));
-     disp("Observation " + num2str(obsNumber) + ": " + num2str(3600*rad2deg(OBSERVATION_OFFSETS(obsNumber))) +  "'' equals " + num2str(round(dist_offset)) + " km offset " )
+     disp("Observation " + num2str(obsNumber) + ": " + num2str(3600*rad2deg(OBSERVATION_OFFSETS(obsNumber))) +  "'' equals " + num2str(round(dist_offset,2)) + " km offset " )
 
     %% Q3
     Ahst = 50^2*pi();
     throughput = 0.02;
     
     [photonThingy, Rayleigh] = conversion(Ahst,throughput,omega_pix,exptime,total_along_the_slit);
+    
     figure()
-    hold on
+    subplot(2,1,1)
     plot([1:col],photonThingy)
-    figure()
-    hold on
-    plot([1:col],Rayleigh)    
+    title('Photon Flux')
+    xlim([0,col])
+    xlabel('Pixels')
+    ylabel('photons/cm²/s/sr')
+    
+    subplot(2,1,2)
+    plot([1:col],Rayleigh)
+    title('Rayleigh')
+    xlim([0,col])
+    xlabel('Pixels')
+    ylabel('R')
+    
     
     %% Q4 and Q5
     brightnessOverDistance(FITSDATASET,dist_HST_comet*tan(platesc_rad),dist_offset);
+
+    %% Q6
+    NGCD = fluxtocolumndensity(photonThingy, xaxis_lambda*1e-10, omega_pix);
     
+    figure()
+    plot(xaxis_lambda, NGCD)
+    title('OH Column density')
+    xlim([min(xaxis_lambda),max(xaxis_lambda)])
+    xlabel('lambda [Ångström]')
+    ylabel('Column density [mol/cm²]')
 end
 
 %% -------------------------- Functions -------------------------------
@@ -211,16 +230,26 @@ function [] = brightnessOverDistance(DATA,scaling,offset_km)
     % ax2 = axes('Position',[a1Pos(1)-.05 a1Pos(2) a1Pos(3) a1Pos(4)],'Color','none','XTick',[],'XTickLabel',[]);
     % xlim([min(error(:)) max(error(:))])
 end
+
 function [photonThingy, Rayleigh] = conversion(Ahst, throughput, omegapix, exptime, count)
     l = length(count);
     for jj=1:l
         photonThingy(jj) = count(jj)/(omegapix*Ahst*throughput*exptime);
-        Rayleigh(jj) = 4*pi()*10e-10*photonThingy(jj);
+        Rayleigh(jj) = 4*pi()*1e-10*photonThingy(jj);
     end
-    
 end
   
-
+function NGCD = fluxtocolumndensity(flux, lambda, omegapix)
+    h =  6.62607015e-34;
+    nu = zeros(length(lambda));
+    c = 299792458;
+    for i=1:length(lambda)
+        nu = c/lambda(i);
+    end
+    L = omegapix*h*nu.*flux;
+    alpha0_0 = 2e-22; % 1 erg = 1e-7 J, to be adjusted regarding to rdot
+    NGCD = L/alpha0_0;
+end
 
 
 
