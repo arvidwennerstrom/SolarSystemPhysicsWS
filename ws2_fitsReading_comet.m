@@ -95,6 +95,7 @@ for obsNumber = 1:length(OBSERVATIONS_ALL)
     ylim([1 row]); 
     xlabel('pixel');
     ylabel('pixel'); 
+    title(OBSERVATIONS_ALL(obsNumber))
 
     % display colorbar
     c = colorbar;
@@ -142,6 +143,7 @@ for obsNumber = 1:length(OBSERVATIONS_ALL)
      %% Q1
      % Offset from comet nucleus towards the Sun, in km
      [dist_HST_comet,dist_offset] = offsetDistance(OBSERVATION_OFFSETS(obsNumber),OBSERVATION_TIMES(obsNumber,:));
+     disp(" ")
      disp("Observation " + num2str(obsNumber) + ": " + num2str(3600*rad2deg(OBSERVATION_OFFSETS(obsNumber))) +  "'' equals " + num2str(round(dist_offset,2)) + " km offset " )
 
     %% Q3
@@ -153,21 +155,30 @@ for obsNumber = 1:length(OBSERVATIONS_ALL)
     figure()
     subplot(2,1,1)
     plot([1:col],photonThingy)
-    title('Photon Flux')
+    title('Photon Radiance (L)')
     xlim([0,col])
     xlabel('Pixels')
     ylabel('photons/cm²/s/sr')
     
     subplot(2,1,2)
     plot([1:col],Rayleigh)
-    title('Rayleigh')
+    title('Photon Flux (I)')
     xlim([0,col])
     xlabel('Pixels')
-    ylabel('R')
+    ylabel('Rayleigh [R]')
     
     
     %% Q4 and Q5
-    brightnessOverDistance(FITSDATASET,dist_HST_comet*tan(platesc_rad),dist_offset);
+    pixel_to_km = dist_HST_comet*tan(platesc_rad);
+    disp("One pixel equals " + num2str(round(pixel_to_km,2)) + " km")
+    
+    slitWidth = 20; % Pixels
+    [I_max, brightestPixel] = max(total_along_the_slit);
+    Data_focused = FITSDATASET.RAWCOUNTS(:,brightestPixel-round(slitWidth/2):brightestPixel+round(slitWidth/2)-1); 
+    Error_focused = FITSDATASET.ERROR(:,brightestPixel-round(slitWidth/2):brightestPixel+round(slitWidth/2)-1); 
+    
+    brightnessOverDistance(Data_focused,Error_focused,pixel_to_km,dist_offset);
+
 
     %% Q6
     NGCD = fluxtocolumndensity(photonThingy, xaxis_lambda*1e-10, omega_pix);
@@ -200,20 +211,20 @@ function [dist_HST_comet,dist_offset] = offsetDistance(offsetAngle,timeOfObserva
     dist_offset = dist_HST_comet*tan(offsetAngle);
 end
 
-function [] = brightnessOverDistance(DATA,scaling,offset_km)
+function [] = brightnessOverDistance(DATA,ERROR,pixel_to_km,offset_km)
     % counts = Raw count data 
     % scaling = One pixel equivalent in km
     % offset = Observation offset from optocenter
 
-    centerPixel = length(DATA.RAWCOUNTS)/2;
-    counts_folded = [DATA.RAWCOUNTS(centerPixel+1:end,:) flip(DATA.RAWCOUNTS(1:centerPixel,:))];
-    error_folded = [DATA.ERROR(centerPixel+1:end,:) flip(DATA.ERROR(1:centerPixel,:))];
-    N = length(error_folded);
-
+    centerPixel = height(DATA)/2;
+    counts_folded = [DATA(centerPixel+1:end,:) flip(DATA(1:centerPixel,:))];
+    error_folded = [ERROR(centerPixel+1:end,:) flip(ERROR(1:centerPixel,:))];
+    N = width(error_folded);
+    
     brightness = mean(counts_folded,2);
     error = (1/N)*sqrt(sum(error_folded.^2,2));
 
-    distance = scaling*(1:centerPixel) + offset_km;
+    distance = pixel_to_km*(1:centerPixel) + offset_km;
     
     figure()
     plot(distance,brightness)
