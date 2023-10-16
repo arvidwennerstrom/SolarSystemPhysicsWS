@@ -31,6 +31,7 @@ for kernel_no = 1:length(kernels)
 end
 
 DATADIR     = './HST_Data_46P/';
+% OBSERVATIONS_ALL = ["odx605010"];
 OBSERVATIONS_ALL = ["odx605010","odx607010","odx628010"]; % root name of files
 OBSERVATION_OFFSETS = deg2rad([0,2.5,8]./3600); % [rad] Offset towards the Sun
 OBSERVATION_TIMES = ["2019-01-11T09:51","2019-01-11T10:23";"2019-01-11T14:34","2019-01-11T15:06";"2019-01-14T12:32","2019-01-14T13:03"];
@@ -177,7 +178,7 @@ for obsNumber = 1:length(OBSERVATIONS_ALL)
     Data_focused = FITSDATASET.RAWCOUNTS(:,brightestPixel-round(slitWidth/2):brightestPixel+round(slitWidth/2)-1); 
     Error_focused = FITSDATASET.ERROR(:,brightestPixel-round(slitWidth/2):brightestPixel+round(slitWidth/2)-1); 
     
-    brightnessOverDistance(Data_focused,Error_focused,pixel_to_km,dist_offset);
+    test = brightnessOverDistance(Data_focused,Error_focused,pixel_to_km,dist_offset,OBSERVATIONS_ALL(obsNumber));
 
 
     %% Q6
@@ -211,30 +212,43 @@ function [dist_HST_comet,dist_offset] = offsetDistance(offsetAngle,timeOfObserva
     dist_offset = dist_HST_comet*tan(offsetAngle);
 end
 
-function [] = brightnessOverDistance(DATA,ERROR,pixel_to_km,offset_km)
+function [test] = brightnessOverDistance(DATA,ERROR,pixel_to_km,dist_offset,obsName)
     % counts = Raw count data 
     % scaling = One pixel equivalent in km
     % offset = Observation offset from optocenter
-
-    centerPixel = height(DATA)/2;
-    counts_folded = [DATA(centerPixel+1:end,:) flip(DATA(1:centerPixel,:))];
-    error_folded = [ERROR(centerPixel+1:end,:) flip(ERROR(1:centerPixel,:))];
-    N = width(error_folded);
     
-    brightness = mean(counts_folded,2);
-    error = (1/N)*sqrt(sum(error_folded.^2,2));
-
-    distance = pixel_to_km*(1:centerPixel) + offset_km;
+    % centerPixel = height(DATA)/2;
+    % counts_folded = [DATA(centerPixel+1:end,:) flip(DATA(1:centerPixel,:))];
+    % error_folded = [ERROR(centerPixel+1:end,:) flip(ERROR(1:centerPixel,:))];
     
+    N = width(ERROR); % Number of samples, width of slit (20 pixels)
+    M = height(ERROR); % Number of measured points along slit (1024 pixels)
+    
+    brightness = mean(DATA,2);
+    error = (1/N)*sqrt(sum(ERROR.^2,2));
+    
+    [ocenter_value,ocenter_index] = max(brightness);
+    distAlongSlit = pixel_to_km*[-ocenter_index+1:M-ocenter_index];
+    dist_ocenter = sqrt(distAlongSlit.^2 + dist_offset^2);
+
+    test = dist_ocenter;
+    
+    no_ticks = 7;
+    tickDensity = round(M/no_ticks);
+    ticks = [flip(ocenter_index:-tickDensity:0) ocenter_index+tickDensity:tickDensity:M];
+    tickLabels = string(round(dist_ocenter(ticks),-1));
+
     figure()
-    plot(distance,brightness)
+    plot(1:M,brightness)
     hold on
-    plot(distance,error)
-    xlim([min(distance) max(distance)])
+    plot(1:M,error)
+    xlim([0 M])
+    xticks(ticks)
+    xticklabels(tickLabels)
     xlabel('Distance from optocenter [km]')
     ylabel('Intensity [counts]')
     legend('Brightness','Error')
-    title('Brightness over distance from optocenter')
+    title('Brightness for observation ' + obsName)
     
 
     % a1Pos = get(gca,'Position');
