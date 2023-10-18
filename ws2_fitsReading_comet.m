@@ -148,27 +148,42 @@ for obsNumber = 1:length(OBSERVATIONS_ALL)
      disp("Observation " + num2str(obsNumber) + ": " + num2str(3600*rad2deg(OBSERVATION_OFFSETS(obsNumber))) +  "'' equals " + num2str(round(dist_offset,2)) + " km offset " )
 
     %% Q3
-    Ahst = 50^2*pi();
+    A_hst = 50^2*pi;
     throughput = 0.02;
     
-    [photonThingy, Rayleigh] = conversion(Ahst,throughput,omega_pix,exptime,total_along_the_slit);
+    [photonThingy, Rayleigh, countsToFlux, fluxToRayleigh] = conversion(A_hst,throughput,omega_pix,exptime,FITSDATASET.RAWCOUNTS);
     
     figure()
-    subplot(2,1,1)
-    plot([1:col],photonThingy)
-    title('Photon Radiance (L)')
-    xlim([0,col])
-    xlabel('Pixels')
-    ylabel('photons/cm²/s/sr')
-    
-    subplot(2,1,2)
-    plot([1:col],Rayleigh)
-    title('Photon Flux (I)')
-    xlim([0,col])
-    xlabel('Pixels')
-    ylabel('Rayleigh [R]')
-    
-    
+    subplot(1,2,1)
+    imagesc(photonThingy)
+    set(gca,'ydir','nor') ;  % Define y axis to increase from bottom to top
+    axis equal
+    xlim([1 col]);
+    ylim([1 row]); 
+    xlabel('pixel');
+    ylabel('pixel'); 
+    % display colorbar
+    c = colorbar;
+    c.Label.String = 'Photon flux [photons/cm²/s/sr]';
+    c.Label.FontSize = 11;
+    clear c
+    caxis; % set colormap axis limits
+
+    subplot(1,2,2)
+    imagesc(Rayleigh)
+    set(gca,'ydir','nor') ;  % Define y axis to increase from bottom to top
+    axis equal
+    xlim([1 col]);
+    ylim([1 row]); 
+    xlabel('pixel');
+    ylabel('pixel'); 
+    % display colorbar
+    c = colorbar;
+    c.Label.String = 'Rayleigh [R]';
+    c.Label.FontSize = 11;
+    clear c
+    caxis; % set colormap axis limits
+
     %% Q4 and Q5
     pixel_to_km = dist_HST_comet*tan(platesc_rad);
     disp("One pixel equals " + num2str(round(pixel_to_km,2)) + " km")
@@ -178,7 +193,7 @@ for obsNumber = 1:length(OBSERVATIONS_ALL)
     Data_focused = FITSDATASET.RAWCOUNTS(:,brightestPixel-round(slitWidth/2):brightestPixel+round(slitWidth/2)-1); 
     Error_focused = FITSDATASET.ERROR(:,brightestPixel-round(slitWidth/2):brightestPixel+round(slitWidth/2)-1); 
     
-    test = brightnessOverDistance(Data_focused,Error_focused,pixel_to_km,dist_offset,OBSERVATIONS_ALL(obsNumber));
+    brightnessOverDistance(Data_focused*countsToFlux,Error_focused*countsToFlux,pixel_to_km,dist_offset,OBSERVATIONS_ALL(obsNumber));
 
 
     %% Q6
@@ -212,7 +227,7 @@ function [dist_HST_comet,dist_offset] = offsetDistance(offsetAngle,timeOfObserva
     dist_offset = dist_HST_comet*tan(offsetAngle);
 end
 
-function [test] = brightnessOverDistance(DATA,ERROR,pixel_to_km,dist_offset,obsName)
+function [] = brightnessOverDistance(DATA,ERROR,pixel_to_km,dist_offset,obsName)
     % counts = Raw count data 
     % scaling = One pixel equivalent in km
     % offset = Observation offset from optocenter
@@ -230,38 +245,30 @@ function [test] = brightnessOverDistance(DATA,ERROR,pixel_to_km,dist_offset,obsN
     [ocenter_value,ocenter_index] = max(brightness);
     distAlongSlit = pixel_to_km*[-ocenter_index+1:M-ocenter_index];
     dist_ocenter = sqrt(distAlongSlit.^2 + dist_offset^2);
-
-    test = dist_ocenter;
+    dist_ocenter(1:ocenter_index) = -dist_ocenter(1:ocenter_index);
     
-    no_ticks = 7;
-    tickDensity = round(M/no_ticks);
-    ticks = [flip(ocenter_index:-tickDensity:0) ocenter_index+tickDensity:tickDensity:M];
-    tickLabels = string(round(dist_ocenter(ticks),-1));
-
     figure()
-    plot(1:M,brightness)
+    plot(distAlongSlit,brightness)
     hold on
-    plot(1:M,error)
-    xlim([0 M])
-    xticks(ticks)
+    plot(distAlongSlit,error)
+    xlim([min(distAlongSlit) max(distAlongSlit)])
+    tickLabels = round(sqrt(xticks().^2 + dist_offset^2),-1);
     xticklabels(tickLabels)
     xlabel('Distance from optocenter [km]')
-    ylabel('Intensity [counts]')
+    ylabel('Photon flux [photons/cm²/s/sr]')
     legend('Brightness','Error')
     title('Brightness for observation ' + obsName)
-    
-
-    % a1Pos = get(gca,'Position');
-    % ax2 = axes('Position',[a1Pos(1)-.05 a1Pos(2) a1Pos(3) a1Pos(4)],'Color','none','XTick',[],'XTickLabel',[]);
-    % xlim([min(error(:)) max(error(:))])
 end
 
-function [photonThingy, Rayleigh] = conversion(Ahst, throughput, omegapix, exptime, count)
-    l = length(count);
-    for jj=1:l
-        photonThingy(jj) = count(jj)/(omegapix*Ahst*throughput*exptime);
-        Rayleigh(jj) = 4*pi()*1e-10*photonThingy(jj);
-    end
+function [photonThingy,Rayleigh,countsToFlux,fluxToRayleigh] = conversion(A_hst, throughput, platescale, exptime, count)
+    % A_hst = Area of telescope [cm^2]
+    % photonThingy = Photon flux [photons/cm²/s/sr]
+
+    countsToFlux = 1/(exptime*A_hst*throughput*platescale); %[counts] to [photons/cm²/s/sr]
+    fluxToRayleigh = 4*pi*1e-6; %[photons/cm²/s/sr] to [R]
+
+    photonThingy = count.*countsToFlux;
+    Rayleigh = photonThingy.*fluxToRayleigh;
 end
   
 function NGCD = fluxtocolumndensity(flux, lambda, omegapix)
