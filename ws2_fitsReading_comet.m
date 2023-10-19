@@ -243,17 +243,22 @@ function [] = brightnessOverDistance(DATA,ERROR,pixel_to_km,dist_offset,obsName)
     error = (1/N)*sqrt(sum(ERROR.^2,2));
     
     [ocenter_value,ocenter_index] = max(brightness);
-    distAlongSlit = pixel_to_km*[-ocenter_index+1:M-ocenter_index];
-    dist_ocenter = sqrt(distAlongSlit.^2 + dist_offset^2);
-    dist_ocenter(1:ocenter_index) = -dist_ocenter(1:ocenter_index);
+    distAlongSlit = pixel_to_km*[-ocenter_index+1:M-ocenter_index]; % Linear distance from optocenter along slit
+    distProjected = sqrt(distAlongSlit.^2 + dist_offset^2) - dist_offset; % Project absolute distance from ocenter onto slit
+    distProjected(1:ocenter_index-1) = -distProjected(1:ocenter_index-1); % Make first half of slit negative, for plotting purposes
     
+    % Smooth both graphs
+    brightness = smooth(brightness);
+    error = smooth(error);
+
     figure()
-    plot(distAlongSlit,brightness)
+    plot(distProjected,brightness)
     hold on
-    plot(distAlongSlit,error)
-    xlim([min(distAlongSlit) max(distAlongSlit)])
-    tickLabels = round(sqrt(xticks().^2 + dist_offset^2),-1);
-    xticklabels(tickLabels)
+    plot(distProjected,error)
+    % plot(distProjected,abs(9.45*1e10./distProjected))
+    xlim([min(distProjected) max(distProjected)])
+    ylim([min(1.1*brightness) max(1.1*brightness)])
+    xticklabels(abs(xticks))
     xlabel('Distance from optocenter [km]')
     ylabel('Photon flux [photons/cm²/s/sr]')
     legend('Brightness','Error')
