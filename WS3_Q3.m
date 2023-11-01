@@ -144,8 +144,12 @@ target_img = M1.*FITSDATASET;
 background_img = M2.*FITSDATASET;
 
 Q3 = sum(target_img(:))-sum(background_img(:))*sum(M1(:))/sum(M2(:));
+Pvol = sum(target_img(:))/sum(M1(:))-sum(background_img(:))/sum(M2(:));
+Pnonvol = sum(background_img(:))/sum(M2(:));
 
 disp(['Q3 ratio for image ', num2str(i),' : ', num2str(Q3)]);
+disp(['Pvol for image ', num2str(i),' : ', num2str(Pvol)]);
+disp(['Pnonvol for image ', num2str(i),' : ', num2str(Pnonvol)]);
 
 
 
