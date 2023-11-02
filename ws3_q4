@@ -1,0 +1,332 @@
+%% FUNCTION ws3_fitsReading_comet
+%  version/date : version 00, 20221013
+%  author       : Lorenz Roth - lorenzr@kth.se
+%  for KTH course EF2243 - Workshop 3              
+%   modified by XXX
+
+%% DESCRIPTION
+%
+%  INPUT:   DATADIR         Path
+%           OBSERVATION     Name fits-file.
+% 
+%  OUTPUT:  FITSDATASET     FITS-Image + additional Information
+%  (header) about dispersion, central wavelength, etc.
+%
+
+clear
+clc
+close all
+
+% dir_spice = '/Users/arvwe/Documents/SPICE';
+% dir_spice = 'C:/Users/tomgi/Documents/DD KTH/AA Cours/Solar System/WS1';
+dir_spice = '\Users\dansf\OneDrive\Documents\KTH\Solar_System_Physics';
+% dir_spice = '/Users/irene/Documents/KTH/year 2/Solar System Physics/';
+
+addpath( fullfile(dir_spice, 'mice/') )
+addpath( fullfile(dir_spice, 'mice/lib') )
+addpath( fullfile(dir_spice, 'mice/doc/html') )
+addpath( fullfile(dir_spice, 'mice/src') )
+addpath( fullfile(dir_spice, 'mice/src/mice') )
+kernels = ["LSK/naif0010.tls","PCK/pck00010.tpc","SPK/de440s.bsp","SPK/jup230l.bsp"];
+for kernel_no = 1:length(kernels)
+    cspice_furnsh( fullfile(dir_spice, ['kernels/' char(kernels(kernel_no))]))
+end
+
+%  Example:
+           DATADIR     = './spectral_files/';
+           FITSFILE{1} = 'KeckKc_15jan12_kc1_GW';           % root name of file
+           FITSFILE{2} = 'KeckBra_15jan12_bra10_GW';
+           FITSFILE{3} = 'KeckBrac_15jan12_brac13_GW';
+           FITSFILE{4} = 'KeckPAH_15jan12_pah19_GW';
+           FITSFILE{5} = 'KeckMs_15jan12_ms7_GW';
+           FITSFILE{6} = 'KeckLp_15jan12_lp4_GW';
+           FITSFILE{7} = 'KeckH2O_15jan12_hho16_GW';
+
+cord = zeros(7,2);     
+pos_telescope = [19.826011357437878, -155.474682099999997];
+axialTilt_E = 23.4392811;
+R_Io = 1821.6;   % [km]
+Q1 = zeros(7,3);
+longlat = zeros(7,2);
+R_pixel = 60.35;
+Pvec = zeros(7,2);
+wavelength = zeros(7,1);
+
+
+
+for i=1:7           
+ 
+    FITSDF     = [ DATADIR FITSFILE{i} '.fits' ] ;
+     
+     % Read FITS-file:
+     
+    FITSINFO     = fitsinfo(FITSDF);   % read header information into structure
+        
+    FITSDATASET   = fitsread(FITSDF);  % spectral irradiance per pixel I(x, y) [counts]
+    
+    [row,col]       = size(FITSDATASET); % Number of rows and column / image dimension
+
+    keywords = FITSINFO.PrimaryData.Keywords
+    [tf, idx] = ismember('CENWAVE', keywords(:,1))
+     wavelength(i,1) = cell2mat(keywords(idx,2));
+
+
+    %% Q1
+R_Io = 1821.6; % [km] 
+date = "2015-01-12";
+time = char(FITSINFO.PrimaryData.Keywords(15,2));
+et_time = cspice_str2et(char([date + "T" + string(time(1:5))]));
+% et_arr = et_time:1:et_time+40;
+
+[d_angular,lon,lat] = epInfo(et_time,R_Io);
+Q1(i,1) = d_angular;
+Q1(i,2) = lon;
+Q1(i,3) = lat;
+
+%% Find the center and brightest volcano
+
+val = max(FITSDATASET, [], 'all');
+[y_volcano,x_volcano] = find(FITSDATASET==val);
+
+j = 1;
+afram = true;
+while afram
+    for k=1:150
+        if FITSDATASET(j,k) ~= 0
+            afram = false;
+            break
+        end
+    end
+    j = j+1;
+end
+yup = j;
+xup = k;
+j = 150;
+afram = true;
+while afram
+    for k=150:-1:1
+        if FITSDATASET(j,k) ~= 0
+            afram = false;
+            break
+        end
+    end
+    j = j-1;
+end
+ydown = j;
+xdown = k;
+
+x_cent = (150-xup-(150-xdown))/2+xup;
+y_cent = (150-yup-(150-ydown))/2+yup;
+
+dx = x_volcano-x_cent;
+dy = y_volcano-y_cent;
+
+cord(i,1) = dx;
+cord(i,2) = dy;
+
+[long,lat] = xy_to_latlon(cord(i,1),cord(i,2),R_pixel,pos_telescope(1),pos_telescope(2),axialTilt_E);
+longlat(i,1) = long+Q1(i,2);
+longlat(i,2) = lat+Q1(i,3);
+
+%% Q3
+
+M1 = zeros(150,150);
+M2 = zeros(150,150);
+R_target = 5;
+R_background = R_target+4;
+for k = 1:150
+    for l = 1:150
+        dk = k-y_volcano;
+        dl = l-x_volcano;
+        dist = sqrt(dk^2+dl^2);
+        if dist <= R_target
+            M1(k,l) = 1;
+        elseif dist <= R_target+5 && dist > R_target+4
+            M2(k,l) = 1;
+        end
+    end
+end
+
+target_img = M1.*FITSDATASET;
+background_img = M2.*FITSDATASET;
+
+Q3 = sum(target_img(:))-sum(background_img(:))*sum(M1(:))/sum(M2(:));
+Pvol = sum(target_img(:))/sum(M1(:))-sum(background_img(:))/sum(M2(:));
+Pnonvol = sum(background_img(:))/sum(M2(:));
+Pvec(i,1) = Pvol;
+Pvec(i,2) = Pnonvol;
+
+disp(['Q3 ratio for image ', num2str(i),' : ', num2str(Q3)]);
+disp(['Pvol for image ', num2str(i),' : ', num2str(Pvol)]);
+disp(['Pnonvol for image ', num2str(i),' : ', num2str(Pnonvol)]);
+
+
+
+%% --- Plot raw image ----
+
+    img_plot=FITSDATASET; % multiply with 1e15 to be close to 1
+
+    figure(i);
+    
+    imagesc(img_plot); 
+    hold on
+    plot(x_volcano,y_volcano,'o','Color', 'r');
+    plot(x_cent,y_cent,'o','Color','m')
+      
+    set(gca,'ydir','nor') ;  % Define y axis to increase from bottom to top
+    axis equal
+    xlim([1 col]);
+    ylim([1 row]); 
+    xlabel('pixel');
+    ylabel('pixel'); 
+    title(i)
+
+    % display colorbar
+    c = colorbar;
+    c.Label.String = 'Intensity [GW]';
+    c.Label.FontSize = 11;
+    clear c
+    caxis; % set colormap axis limits
+
+    
+    showplotQ3 = 0;
+
+    if showplotQ3 == 1
+    
+    figure(10+i);
+
+    imagesc(target_img); 
+    hold on
+    plot(x_volcano,y_volcano,'o','Color', 'r');
+    plot(x_cent,y_cent,'o','Color','m')
+      
+    set(gca,'ydir','nor') ;  % Define y axis to increase from bottom to top
+    axis equal
+    xlim([1 col]);
+    ylim([1 row]); 
+    xlabel('pixel');
+    ylabel('pixel'); 
+    title(i)
+
+    % display colorbar
+    c = colorbar;
+    c.Label.String = 'Intensity [GW]';
+    c.Label.FontSize = 11;
+    clear c
+    caxis; % set colormap axis limits
+
+    figure(20+i);
+
+    imagesc(background_img); 
+    hold on
+    plot(x_volcano,y_volcano,'o','Color', 'r');
+    plot(x_cent,y_cent,'o','Color','m')
+      
+    set(gca,'ydir','nor') ;  % Define y axis to increase from bottom to top
+    axis equal
+    xlim([1 col]);
+    ylim([1 row]); 
+    xlabel('pixel');
+    ylabel('pixel'); 
+    title(i)
+
+    % display colorbar
+    c = colorbar;
+    c.Label.String = 'Intensity [GW]';
+    c.Label.FontSize = 11;
+    clear c
+    caxis; % set colormap axis limits
+    end
+
+    
+
+end
+     
+    cord
+platescale = 0.009942;          % arcsec/pixel
+% R_pixel = 56.8620;
+
+longlat
+
+figure(30)
+plot(wavelength([2:6]),Pvec([2:6],1),'o')
+xlabel('Wavelength [\mum]')
+ylabel('Pvolc')
+title('January 15 2012')
+figure(31)
+plot(wavelength([2:6]),Pvec([2:6],2),'o')
+xlabel('Wavelength [\mum]')
+ylabel('Pnonvolc')
+title('January 15 2012')
+init_temp = 600-273;
+final_temp = 900-273;
+
+count = 1;
+alpha = 10^-9;
+
+for T=init_temp:50:final_temp
+    [E, lambda] = Planck(T);
+    Emat{count} = E*alpha;
+    Temp(count) = T;
+
+    count = count+1;
+end
+figure(32)
+hold on
+plot(lambda,Emat{1},'DisplayName','600K')
+plot(lambda,Emat{2},'DisplayName','650K')
+plot(lambda,Emat{3},'DisplayName','700K')
+plot(lambda,Emat{4},'DisplayName','750K')
+plot(lambda,Emat{5},'DisplayName','800K')
+plot(lambda,Emat{6},'DisplayName','850K')
+plot(lambda,Emat{7},'DisplayName','900K')
+plot(wavelength([2:6])*10^-6,Pvec([2:6],1),'o','DisplayName','Pvolc')
+plot(wavelength([2:6])*10^-6,Pvec([2:6],2),'o','DisplayName','Pnonvolc')
+hold off
+lgd = legend;
+lgd.NumColumns = 2;
+xlabel('Wavelength [m]')
+ylabel('E scaled with 10^{-9}')
+title('Planck function and P')
+
+figure(33)
+hold on
+plot(lambda,Emat{1},'DisplayName','600K')
+plot(lambda,Emat{2},'DisplayName','700K')
+plot(lambda,Emat{3},'DisplayName','800K')
+plot(lambda,Emat{4},'DisplayName','900K')
+plot(wavelength([2:6])*10^-6,Pvec([2:6],1),'o','DisplayName','Pvolc')
+plot(wavelength([2:6])*10^-6,Pvec([2:6],2),'o','DisplayName','Pnonvolc')
+hold off
+lgd = legend;
+lgd.NumColumns = 2;
+xlabel('Wavelength [m]')
+ylabel('E scaled with 10^{-9}')
+
+
+
+
+function [d_angular,lon,lat] = epInfo(et_time,R_Io)
+    [Io_spos, Io_ltime] = cspice_spkpos('501', et_time, 'ECLIPJ2000', 'LT', 'EARTH');
+    d_IoEarth = sqrt(sum(Io_spos.^2));
+    d_angular = 2*atand(R_Io/d_IoEarth)*3600; % [Arcseconds]
+
+    spoint = cspice_subsol('NEARPOINT','501', et_time, 'LT', 'EARTH');
+    pos_telescope = [19.826011357437878, -155.47468209999997];
+    axialTilt_E = 23.4392811;
+    [lon, lat] = xy_to_latlon(spoint(1),spoint(2),R_Io,pos_telescope(1),pos_telescope(2),axialTilt_E);
+
+
+end
+function [E,lambda] = Planck(T)
+    h = 6.62607015e-34;
+    c = 3e8;
+    k = 1.380649e-23;
+    count = 1;
+    for i=1e-6:0.1e-6:10e-6
+        lambda(count) = i;
+        E(count) = (2*h*c^2)/(i^5)*1/(exp((h*c)/(i*k*T))-1);
+        count = count+1;
+    end
+end
+ 
